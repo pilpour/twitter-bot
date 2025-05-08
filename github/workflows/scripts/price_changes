@@ -1,0 +1,167 @@
+from config import EVENT_TYPES, TEAM_CODES
+
+def format_price_change_tweets(price_changes):
+    """
+    تنسيق تغريدات تغييرات الأسعار
+    
+    المعلمات:
+        price_changes (list): قائمة من تغييرات الأسعار
+    
+    الإرجاع:
+        list: قائمة من نصوص التغريدات الجاهزة للنشر
+    """
+    if not price_changes:
+        return []
+    
+    # تقسيم التغييرات إلى ارتفاعات وانخفاضات
+    increases = [p for p in price_changes if p['direction'] == 'up']
+    decreases = [p for p in price_changes if p['direction'] == 'down']
+    
+    tweets = []
+    
+    # معالجة الارتفاعات
+    if increases:
+        current_tweet = "🔼 Price Rises #FPL\n\n"
+        
+        for player in increases:
+            line = f"🔼 {player['name']} (#{player['team_code']}, {player['position']}) £{player['price']}m (+£{player['change']}m)\n"
+            
+            # التحقق من حد الأحرف لتويتر
+            if len(current_tweet + line) > 280:
+                tweets.append(current_tweet)
+                current_tweet = "🔼 Price Rises (Cont.) #FPL\n\n"
+            
+            current_tweet += line
+        
+        if current_tweet:
+            tweets.append(current_tweet)
+    
+    # معالجة الانخفاضات
+    if decreases:
+        current_tweet = "🔽 Price Falls #FPL\n\n"
+        
+        for player in decreases:
+            line = f"🔽 {player['name']} (#{player['team_code']}, {player['position']}) £{player['price']}m (-£{player['change']}m)\n"
+            
+            # التحقق من حد الأحرف لتويتر
+            if len(current_tweet + line) > 280:
+                tweets.append(current_tweet)
+                current_tweet = "🔽 Price Falls (Cont.) #FPL\n\n"
+            
+            current_tweet += line
+        
+        if current_tweet:
+            tweets.append(current_tweet)
+    
+    return tweets
+
+def format_live_match_update(match_data, is_final=False):
+    """
+    تنسيق تحديثات المباراة المباشرة
+    
+    المعلمات:
+        match_data (dict): بيانات المباراة
+        is_final (bool): هل المباراة انتهت
+    
+    الإرجاع:
+        str: نص التغريدة
+    """
+    if not match_data:
+        return None
+    
+    # استخراج معلومات المباراة
+    home_team = match_data.get('home_team', 'HOME')
+    away_team = match_data.get('away_team', 'AWAY')
+    home_score = match_data.get('home_score', 0)
+    away_score = match_data.get('away_score', 0)
+    
+    status = "FT" if is_final else match_data.get('status', 'LIVE')
+    
+    tweet = f"{status}: {home_team} {home_score} - {away_score} {away_team} #FPL\n\n"
+    
+    if is_final:
+        tweet += "Match Finished. Full #FPL points update to follow."
+    
+    return tweet
+
+def format_live_event_tweet(event):
+    """
+    تنسيق تغريدة لحدث مباشر (هدف، بطاقة، إلخ)
+    
+    المعلمات:
+        event (dict): بيانات الحدث
+    
+    الإرجاع:
+        str: نص التغريدة
+    """
+    if not event:
+        return None
+    
+    # الحصول على اسم الحدث بالعربية
+    event_type = event.get('event_type')
+    event_prefix = EVENT_TYPES.get(event_type, '')
+    
+    # الحصول على معلومات اللاعب والمباراة
+    player_name = event.get('player_name', '')
+    team_code = event.get('team_code', '')
+    home_team = event.get('home_team', '')
+    away_team = event.get('away_team', '')
+    home_score = event.get('home_score', 0)
+    away_score = event.get('away_score', 0)
+    minute = event.get('minute', 0)
+    
+    # إنشاء نص التغريدة
+    tweet = f"{minute}' {home_team} {home_score}-{away_score} {away_team}\n\n"
+    tweet += f"{event_prefix}{player_name} (#{team_code})\n\n"
+    tweet += "#FPL"
+    
+    return tweet
+
+def format_bonus_points_tweets(bonus_points):
+    """
+    تنسيق تغريدات نقاط المكافآت
+    
+    المعلمات:
+        bonus_points (list): قائمة من نقاط المكافآت مصنفة حسب المباراة
+    
+    الإرجاع:
+        list: قائمة من نصوص التغريدات الجاهزة للنشر
+    """
+    if not bonus_points:
+        return []
+    
+    tweets = []
+    current_tweet = "🎖️ Bonus Points (Provisional) #FPL\n\n"
+    
+    for match in bonus_points:
+        home_team = match.get('home_team', '')
+        away_team = match.get('away_team', '')
+        
+        match_line = f"{home_team} vs {away_team}:\n"
+        
+        # التحقق من حد الأحرف لتويتر
+        if len(current_tweet + match_line) > 240:  # احتياطي للأسماء والنقاط
+            tweets.append(current_tweet)
+            current_tweet = "🎖️ Bonus Points (Cont.) #FPL\n\n"
+        
+        current_tweet += match_line
+        
+        # إضافة اللاعبين ونقاط المكافآت الخاصة بهم
+        players = match.get('players', [])
+        for player in players:
+            player_line = f"• {player.get('points', 0)} pts - {player.get('name', '')} (#{player.get('team_code', '')})\n"
+            
+            # التحقق من حد الأحرف لتويتر
+            if len(current_tweet + player_line) > 280:
+                tweets.append(current_tweet)
+                current_tweet = "🎖️ Bonus Points (Cont.) #FPL\n\n"
+                current_tweet += f"{home_team} vs {away_team} (Cont.):\n"
+            
+            current_tweet += player_line
+        
+        current_tweet += "\n"
+    
+    if current_tweet:
+        tweets.append(current_tweet)
+    
+    return tweets
