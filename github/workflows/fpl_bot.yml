@@ -1,0 +1,96 @@
+name: FPL Twitter Bot
+
+on:
+  schedule:
+    # تغييرات الأسعار - كل 4 ساعات
+    - cron: '0 */4 * * *'
+    # تحديثات المباريات - كل دقيقة أيام المباريات (الجمعة، السبت، الأحد، الإثنين)
+    - cron: '* 14-22 * * 5,6,0,1'
+    # نقاط المكافآت - كل 30 دقيقة أثناء المباريات الجارية
+    - cron: '*/30 14-22 * * 5,6,0,1'
+  # يسمح بالتشغيل اليدوي مع تحديد نوع المهمة
+  workflow_dispatch:
+    inputs:
+      job_type:
+        description: 'نوع المهمة'
+        required: true
+        default: 'price_changes'
+        type: choice
+        options:
+        - price_changes
+        - live_updates
+        - bonus_points
+        - run_all
+
+jobs:
+  price-changes:
+    if: github.event_name == 'schedule' && github.event.schedule == '0 */4 * * *' || github.event.inputs.job_type == 'price_changes' || github.event.inputs.job_type == 'run_all'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Create .env file
+        run: |
+          echo "FPL_API_URL=https://fantasy.premierleague.com/api" >> .env
+          echo "TWITTER_CONSUMER_KEY=${{ secrets.TWITTER_CONSUMER_KEY }}" >> .env
+          echo "TWITTER_CONSUMER_SECRET=${{ secrets.TWITTER_CONSUMER_SECRET }}" >> .env
+          echo "TWITTER_ACCESS_TOKEN=${{ secrets.TWITTER_ACCESS_TOKEN }}" >> .env
+          echo "TWITTER_ACCESS_TOKEN_SECRET=${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}" >> .env
+      - name: Run Price Changes Script
+        run: python scripts/price_changes.py
+
+  live-updates:
+    if: github.event_name == 'schedule' && contains(github.event.schedule, '* 14-22 * * 5,6,0,1') || github.event.inputs.job_type == 'live_updates' || github.event.inputs.job_type == 'run_all'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Create .env file
+        run: |
+          echo "FPL_API_URL=https://fantasy.premierleague.com/api" >> .env
+          echo "TWITTER_CONSUMER_KEY=${{ secrets.TWITTER_CONSUMER_KEY }}" >> .env
+          echo "TWITTER_CONSUMER_SECRET=${{ secrets.TWITTER_CONSUMER_SECRET }}" >> .env
+          echo "TWITTER_ACCESS_TOKEN=${{ secrets.TWITTER_ACCESS_TOKEN }}" >> .env
+          echo "TWITTER_ACCESS_TOKEN_SECRET=${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}" >> .env
+      - name: Run Live Updates Script
+        run: python scripts/live_updates.py
+
+  bonus-points:
+    if: github.event_name == 'schedule' && github.event.schedule == '*/30 14-22 * * 5,6,0,1' || github.event.inputs.job_type == 'bonus_points' || github.event.inputs.job_type == 'run_all'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Create .env file
+        run: |
+          echo "FPL_API_URL=https://fantasy.premierleague.com/api" >> .env
+          echo "TWITTER_CONSUMER_KEY=${{ secrets.TWITTER_CONSUMER_KEY }}" >> .env
+          echo "TWITTER_CONSUMER_SECRET=${{ secrets.TWITTER_CONSUMER_SECRET }}" >> .env
+          echo "TWITTER_ACCESS_TOKEN=${{ secrets.TWITTER_ACCESS_TOKEN }}" >> .env
+          echo "TWITTER_ACCESS_TOKEN_SECRET=${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}" >> .env
+      - name: Run Bonus Points Script
+        run: python scripts/bonus_points.py
